@@ -1,0 +1,11 @@
+.input-container:hover, .input-container:active{
+    box-shadow: 0px 0px 32px 0px #633CFF40;
+    border:1px solid #633CFF;
+
+}
+
+.signUp-btn:hover{
+    background: #BEADFF;
+    box-shadow: 0px 0px 32px 0px #633CFF40;
+
+}
