@@ -1,4 +1,5 @@
 "use server";
+import { readFile } from "fs";
 import { auth, signIn } from "../auth";
 import prisma from "../lib/db";
 
@@ -114,5 +115,33 @@ export async function signInUser(
       success: false,
       message: "User creation failed",
     };
+  }
+}
+
+export default async function createDetails(formData: FormData) {
+  const data = {
+    firstName: formData.get("firstName"),
+    lastName: formData.get("lastName"),
+    imgUrl: formData.get("imgFile"),
+    email: formData.get("email"),
+  };
+
+  // Validate data here before destructing below
+
+  // const { firstName, lastName, imgUrl, email } = data;
+
+  try {
+    await prisma.user.create({
+      data: {
+        first_name: data.firstName as string,
+        last_name: data.lastName as string,
+        email: data.email as string,
+        image: data.imgUrl as string,
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    return { error: "Failed to update post." };
   }
 }

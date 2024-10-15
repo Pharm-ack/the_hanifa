@@ -1,7 +1,13 @@
 "use client";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useContext, useState } from "react";
+import React, {
+  useEffect,
+  useContext,
+  useState,
+  ChangeEvent,
+  FormEvent,
+} from "react";
 import { CgProfile } from "react-icons/cg";
 import { FaLink } from "react-icons/fa6";
 import "./page.css";
@@ -12,15 +18,79 @@ import { StateContext } from "../context/state";
 import DisplaySelectedPlatforms from "../components/DisplaySelectedPlatforms";
 import AddLinkButton from "../components/AddLinkButton";
 import { useSession } from "next-auth/react";
+import { useUploadThing } from "../lib/uploadthing";
+import createDetails from "../actions/actions";
 
 export default function Home() {
   const { socialCards, updateSocialCard, removeSocialCard } =
     useContext(StateContext);
   const { data: session } = useSession();
 
-  console.log(session);
+  const [imgFile, setImgFile] = useState<string | null>(null);
+  const [pending, setPending] = useState<boolean>(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const router = useRouter();
+  console.log("from Preview", imagePreview);
+
+  const { startUpload } = useUploadThing("imageUploader", {
+    onClientUploadComplete: () => {
+      alert("uploaded successfully!");
+    },
+    onUploadError: (err) => {
+      console.error("Error occurred", err);
+    },
+    onUploadBegin: () => {
+      alert("Upload has begun 🚀!");
+    },
+  });
+
+  const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] as File;
+    const formData = new FormData();
+    formData.append("image", file);
+    if (!file) {
+      return;
+    }
+    try {
+      const res = await startUpload([file]);
+      if (res && res.length > 0) {
+        console.log(res);
+        // Updated condition to check if res is defined
+        setImagePreview(res[0].url);
+        setImgFile(res[0].url);
+        // setUserProfileState((prev) => ({ ...prev, image: res[0].url }));
+        // toast.success("Image uploaded successfully");
+      }
+    } catch (e) {
+      // toast.error("Error uploading image");
+    }
+  };
+
+  const handleSubmit = async (data: any) => {
+    const formData = new FormData();
+
+    formData.append("firstName", data.firstName);
+    // Ensure lastName is a string before appending
+    formData.append("lastName", data.lastName);
+    formData.append("email", data.email);
+
+    // Ensure imgFile is a Blob before appending
+    if (imgFile) {
+      formData.append("imgFile", imgFile);
+    }
+
+    const response = await createDetails(formData);
+
+    if (response?.error) {
+      alert("Could not update details. Please try again.");
+      return;
+    }
+
+    if (!response?.error) {
+      alert("Details updated successfully!");
+    }
+  };
+
   const {
     name,
     setName,
@@ -213,46 +283,67 @@ export default function Home() {
 
         {showProfile && (
           <div className=" md:w-[60%] w-[100%] sm:h-[834px] h-[fit-content] rounded-[12px] bg-white ">
-            <div className="w-full h-[auto] sm:h-[739px] p-[40px] gap-[40px] flex flex-col ">
-              <div>
-                <p className="text-[#333333] font-instrument-sans text-[24px]  md:text-[32px] font-bold leading-[48px] text-left">
-                  Profile details
-                </p>
-                <p className="text-[#737373] font-instrument-sans  text-[16px] font-normal leading-[24px] text-left">
-                  Add your details to create a personal touch to your profile.
-                </p>
-              </div>
-
-              <div className="w-full h-auto flex flex-col justify-between gap-[24px] ">
-                <div className="w-full h-auto p-[20px]  rounded-[12px] bg-[#FAFAFA] flex flex-col sm:flex-row justify-between items-start md:items-center  ">
-                  <p className="text-[#888888] font-[Instrument Sans] text-[16px] font-normal leading-[24px] text-left mb-3 md:mb-0">
-                    Profile picture
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="w-full h-[auto] sm:h-[739px] p-[40px] gap-[40px] flex flex-col ">
+                <div>
+                  <p className="text-[#333333] font-instrument-sans text-[24px]  md:text-[32px] font-bold leading-[48px] text-left">
+                    Profile details
                   </p>
-
-                  <div className="md:w-[432px] w-[70%] flex flex-col sm:flex-row  justify-between items-start lg:w[60%]  md:items-center">
-                    <div className="w-[193px] h-[193px] rounded-[12px] bg-[#EFEBFF] text-[#633CFF] mb-3 md:mb-0 flex flex-col justify-center items-center">
-                      <HiOutlinePhoto className="text-[32px]" />
-                      <span className="font-instrument-sans text-[16px] font-semibold leading-[24px] ">
-                        +Upload Photo
-                      </span>
-                    </div>
-                    <p className="font-instrument-sans text-[12px] md:w-[40%]  font-normal w-full lg:w-[215px] leading-[18px] text-[#737373]  text-left">
-                      Image must be below 1024x1024px. Use PNG or JPG format.
-                    </p>
-                  </div>
+                  <p className="text-[#737373] font-instrument-sans  text-[16px] font-normal leading-[24px] text-left">
+                    Add your details to create a personal touch to your profile.
+                  </p>
                 </div>
 
-                <div className="w-full h-auto p-[20px]  gap-[12px] rounded-[12px] bg-[#FAFAFA]">
-                  <form className="space-y-4">
+                <div className="w-full h-auto flex flex-col justify-between gap-[24px] ">
+                  <div className="w-full h-auto p-[20px]  rounded-[12px] bg-[#FAFAFA] flex flex-col sm:flex-row justify-between items-start md:items-center  ">
+                    <p className="text-[#888888] font-[Instrument Sans] text-[16px] font-normal leading-[24px] text-left mb-3 md:mb-0">
+                      Profile picture
+                    </p>
+
+                    <div className="md:w-[432px] w-[70%] flex flex-col sm:flex-row  justify-between items-start lg:w[60%]  md:items-center">
+                      <label className="relative cursor-pointer w-[193px] h-[193px] rounded-[12px] bg-[#EFEBFF] text-[#633CFF] mb-3 md:mb-0 flex flex-col justify-center items-center">
+                        <HiOutlinePhoto className="text-[32px]" />
+
+                        <input
+                          type="file"
+                          name="image"
+                          id="image"
+                          onChange={handleImageChange}
+                          className="hidden"
+                        />
+                        {imagePreview && (
+                          <>
+                            <Image
+                              width={200}
+                              height={200}
+                              src={imagePreview}
+                              alt="Preview"
+                              className="mb-4 max-w-xs absolute w-full h-full object-cover rounded-xl top-0"
+                            />
+                            <div className="absolute inset-0 bg-black/50 rounded-xl"></div>
+                          </>
+                        )}
+                        <span className="font-instrument-sans text-[16px] font-semibold leading-[24px] ">
+                          +Upload Photo
+                        </span>
+                      </label>
+                      <p className="font-instrument-sans text-[12px] md:w-[40%]  font-normal w-full lg:w-[215px] leading-[18px] text-[#737373]  text-left">
+                        Image must be below 1024x1024px. Use PNG or JPG format.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full h-auto p-[20px]  gap-[12px] rounded-[12px] bg-[#FAFAFA]">
                     <div className="flex sm:items-center items-start  justify-between flex-col sm:flex-row">
                       <label
-                        htmlFor="first-name"
+                        htmlFor="firstName"
                         className="  font-instrument-sans text-[16px] font-medium text-[#333333]"
                       >
                         First Name
                       </label>
                       <input
-                        id="first-name"
+                        id="firstName"
+                        name="firstName"
                         type="text"
                         className=" input-page lg:w-[432px] sm:w-[70%] w-full  px-3 py-2 border focus:outline-none m-0 border-[#D9D9D9] rounded-md font-instrument-sans text-[16px] text-[#333333]"
                         placeholder="e.g John"
@@ -263,13 +354,13 @@ export default function Home() {
 
                     <div className="flex sm:items-center items-start justify-between  flex-col sm:flex-row  ">
                       <label
-                        htmlFor="last-name"
+                        htmlFor="lastName"
                         className="  font-instrument-sans text-[16px] font-medium text-[#333333]"
                       >
                         Last Name
                       </label>
                       <input
-                        id="last-name"
+                        id="lastName"
                         type="text"
                         className="input-page lg:w-[432px] sm:w-[70%] w-full  px-3 py-2 border focus:outline-none border-gray-300 rounded-md font-instrument-sans text-[16px] text-[#333333]"
                         placeholder="e.g. Appleseed"
@@ -287,23 +378,25 @@ export default function Home() {
                       </label>
                       <input
                         id="email"
+                        name="email"
                         type="email"
                         className="input-page lg:w-[432px] sm:w-[70%] m-0 w-full px-3 py-2 border focus:outline-none border-gray-300 rounded-md font-instrument-sans text-[16px] text-[#333333]"
                         placeholder="e.g example@example.com"
                         value={emailad}
+                        // defaultValue={}
                         onChange={(e) => setEmailad(e.target.value)}
                       />
                     </div>
-                  </form>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="w-full h-[95px] p-[40px] flex flex-col justify-center items-end border border-t-gray">
-              <button className="sm:w-[91px]  w-[100%] h-[46px] p-[11px] text-white px-[27px] rounded-[8px]  bg-[#633CFF] gap-[8px]">
-                Save
-              </button>
-            </div>
+              <div className="w-full h-[95px] p-[40px] flex flex-col justify-center items-end border border-t-gray">
+                <button className="sm:w-[91px]  w-[100%] h-[46px] p-[11px] text-white px-[27px] rounded-[8px]  bg-[#633CFF] gap-[8px]">
+                  Save
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
